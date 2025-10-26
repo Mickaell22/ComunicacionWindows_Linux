@@ -9,11 +9,15 @@ Este programa permite compartir automáticamente el contenido del portapapeles e
 ## Características
 
 - Sincronización automática en tiempo real
+- **Comparte portapapeles Y mouse/teclado entre dispositivos**
 - Funciona entre Windows y Linux (Kali)
 - Arquitectura cliente-servidor simple
-- Detección automática de cambios en el portapapeles
+- Detección automática de cambios
 - **Interfaz gráfica (GUI) fácil de usar**
+- **Se oculta en la bandeja del sistema (system tray)**
+- **Compilable a ejecutable .exe (no requiere Python)**
 - **Versión de línea de comandos también disponible**
+- **Hotkey para cambiar control entre dispositivos (Ctrl+Alt+Shift+S)**
 - Sin necesidad de configuración compleja
 
 ## Requisitos
@@ -45,6 +49,25 @@ sudo apt update
 sudo apt install xclip
 ```
 
+## Compilar a Ejecutable (.exe)
+
+Si quieres usar la aplicación sin instalar Python, puedes compilarla a un archivo .exe:
+
+### En Windows:
+1. Asegúrate de tener todas las dependencias instaladas: `pip install -r requirements.txt`
+2. Doble clic en `Compilar_a_EXE.bat`
+3. O ejecuta: `python build_exe.py`
+4. El archivo `ClipboardSync.exe` se creará en la carpeta `dist/`
+5. Puedes copiar este .exe a cualquier ubicación y ejecutarlo directamente
+
+**Ventajas del .exe:**
+- No necesitas Python instalado
+- Más fácil de distribuir
+- Se ejecuta directamente con doble clic
+- Más profesional
+
+---
+
 ## Uso
 
 ### OPCIÓN 1: Interfaz Gráfica (RECOMENDADO)
@@ -67,19 +90,44 @@ python3 clipboard_sync_gui.py
 ```
 
 #### Configurar como Servidor:
-1. Ejecuta `python clipboard_sync_gui.py`
-2. Selecciona "Servidor" en el modo de operación
-3. Haz clic en "Obtener IP Local" para ver tu IP
-4. Haz clic en "Iniciar"
-5. Comparte la IP con el cliente
+1. Ejecuta la aplicación GUI
+2. Selecciona **"Servidor"** en el modo de operación
+3. Haz clic en **"Obtener IP Local"** para ver tu IP
+4. Ingresa un puerto (por ejemplo: 5555)
+5. Haz clic en **"Iniciar"**
+6. Comparte tu IP con el cliente
 
 #### Configurar como Cliente:
-1. Ejecuta `python clipboard_sync_gui.py`
-2. Selecciona "Cliente" en el modo de operación
+1. Ejecuta la aplicación GUI
+2. Selecciona **"Cliente"** en el modo de operación
 3. Ingresa la IP del servidor en el campo "IP"
-4. Haz clic en "Iniciar"
+4. Ingresa el mismo puerto que el servidor
+5. Haz clic en **"Iniciar"**
 
 ¡Listo! Ahora cualquier texto que copies en un dispositivo aparecerá automáticamente en el otro.
+
+**Funcionalidad de Bandeja del Sistema (System Tray):**
+- La aplicación se oculta en la bandeja del sistema al minimizarla o cerrarla
+- Haz clic derecho en el ícono de la bandeja para ver las opciones:
+  - **Mostrar**: Abre la ventana principal
+  - **Ocultar**: Oculta la ventana
+  - **Estado**: Muestra el estado actual en una notificación
+  - **Salir**: Cierra completamente la aplicación
+- Doble clic en el ícono para mostrar/ocultar la ventana
+- La aplicación seguirá sincronizando incluso cuando esté oculta
+
+**Compartir Mouse/Teclado (KVM):**
+- Una vez que la sincronización esté activa, marca la casilla "Activar compartir mouse/teclado"
+- El dispositivo que active primero tendrá el control inicial
+- **Para cambiar el control**: Presiona `Ctrl+Alt+Shift+S` en cualquier dispositivo
+- El control cambiará al otro dispositivo automáticamente
+- Puedes ver quién tiene el control en el indicador de estado
+- Útil para trabajar con dos PCs sin cambiar el mouse/teclado físicamente
+
+**Nota importante:**
+- No hay datos hardcodeados
+- La configuración se guarda automáticamente cada vez que inicias
+- La próxima vez que abras la aplicación, se cargarán tus últimas configuraciones
 
 ---
 

@@ -10,21 +10,29 @@ import socket
 import threading
 import time
 import pyperclip
+import json
+import os
 from datetime import datetime
+import pystray
+from PIL import Image, ImageDraw
+from kvm_sync import KVMSync
 
 
 class ClipboardSyncGUI:
     def __init__(self, root):
         self.root = root
         self.root.title("Clipboard Sync - Sincronizador de Portapapeles")
-        self.root.geometry("600x550")
+        self.root.geometry("650x700")
         self.root.resizable(False, False)
+
+        # Archivo de configuración
+        self.config_file = "clipboard_sync_config.json"
 
         # Variables
         self.running = False
         self.mode = tk.StringVar(value="server")
-        self.host_var = tk.StringVar(value="0.0.0.0")
-        self.port_var = tk.StringVar(value="5555")
+        self.host_var = tk.StringVar(value="")
+        self.port_var = tk.StringVar(value="")
         self.status_var = tk.StringVar(value="Detenido")
 
         # Variables de sincronización
@@ -33,8 +41,134 @@ class ClipboardSyncGUI:
         self.client_socket = None
         self.server_socket = None
 
+        # System tray
+        self.tray_icon = None
+        self.is_hidden = False
+
+        # KVM (Keyboard/Mouse sharing)
+        self.kvm_enabled = tk.BooleanVar(value=False)
+        self.kvm_sync = None
+        self.control_status_var = tk.StringVar(value="Sin control")
+
+        # Cargar configuración previa
+        self.load_config()
+
         self.create_widgets()
         self.update_interface()
+
+        # Configurar system tray
+        self.setup_tray()
+
+        # Configurar comportamiento de cierre/minimizar
+        self.root.protocol("WM_DELETE_WINDOW", self.hide_window)
+        self.root.bind("<Unmap>", self.on_minimize)
+
+    def load_config(self):
+        """Carga la configuración desde el archivo JSON"""
+        try:
+            if os.path.exists(self.config_file):
+                with open(self.config_file, 'r') as f:
+                    config = json.load(f)
+                    self.mode.set(config.get('mode', 'server'))
+                    self.host_var.set(config.get('host', ''))
+                    self.port_var.set(config.get('port', ''))
+        except Exception as e:
+            print(f"Error cargando configuración: {e}")
+
+    def save_config(self):
+        """Guarda la configuración actual en el archivo JSON"""
+        try:
+            config = {
+                'mode': self.mode.get(),
+                'host': self.host_var.get(),
+                'port': self.port_var.get()
+            }
+            with open(self.config_file, 'w') as f:
+                json.dump(config, f, indent=4)
+        except Exception as e:
+            print(f"Error guardando configuración: {e}")
+
+    def create_tray_icon(self):
+        """Crea un ícono simple para el system tray"""
+        # Crear una imagen de 64x64 con un círculo
+        width = 64
+        height = 64
+        image = Image.new('RGB', (width, height), 'white')
+        draw = ImageDraw.Draw(image)
+
+        # Dibujar un círculo azul con una "C" estilizada
+        draw.ellipse([8, 8, 56, 56], fill='#2196F3', outline='#1976D2', width=2)
+
+        # Dibujar texto "C" en el centro
+        draw.text((22, 16), "C", fill='white')
+
+        return image
+
+    def setup_tray(self):
+        """Configura el ícono del system tray"""
+        icon_image = self.create_tray_icon()
+
+        # Crear el menú del tray
+        menu = pystray.Menu(
+            pystray.MenuItem("Mostrar", self.show_window, default=True),
+            pystray.MenuItem("Ocultar", self.hide_window),
+            pystray.Menu.SEPARATOR,
+            pystray.MenuItem("Estado", self.show_status),
+            pystray.Menu.SEPARATOR,
+            pystray.MenuItem("Salir", self.quit_app)
+        )
+
+        # Crear el ícono del tray
+        self.tray_icon = pystray.Icon("clipboard_sync", icon_image, "Clipboard Sync", menu)
+
+        # Ejecutar el tray en un hilo separado
+        threading.Thread(target=self.tray_icon.run, daemon=True).start()
+
+    def show_window(self, icon=None, item=None):
+        """Muestra la ventana principal"""
+        self.is_hidden = False
+        self.root.deiconify()
+        self.root.lift()
+        self.root.focus_force()
+
+    def hide_window(self, icon=None, item=None):
+        """Oculta la ventana al system tray"""
+        self.is_hidden = True
+        self.root.withdraw()
+
+    def on_minimize(self, event):
+        """Se ejecuta cuando se minimiza la ventana"""
+        if event.widget == self.root and self.root.state() == 'iconic':
+            self.hide_window()
+
+    def show_status(self, icon=None, item=None):
+        """Muestra el estado actual en una notificación"""
+        status = self.status_var.get()
+        try:
+            if self.tray_icon:
+                self.tray_icon.notify(f"Estado: {status}", "Clipboard Sync")
+        except:
+            pass
+
+    def quit_app(self, icon=None, item=None):
+        """Cierra completamente la aplicación"""
+        if self.running:
+            response = messagebox.askokcancel(
+                "Salir",
+                "La sincronización está activa. ¿Deseas detenerla y salir?",
+                parent=self.root if not self.is_hidden else None
+            )
+            if not response:
+                return
+
+        self.stop_sync()
+
+        # Detener el tray icon
+        if self.tray_icon:
+            self.tray_icon.stop()
+
+        self.root.quit()
+        self.root.destroy()
 
     def create_widgets(self):
         # Frame principal
@@ -64,10 +198,46 @@ class ClipboardSyncGUI:
         self.host_entry = ttk.Entry(network_frame, textvariable=self.host_var, width=30)
         self.host_entry.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=5, pady=5)
 
+        # Placeholder para IP
+        if not self.host_var.get() and self.mode.get() == "client":
+            self.host_entry.insert(0, "Ej: 192.168.1.100")
+            self.host_entry.config(foreground='gray')
+
+        def on_host_focus_in(event):
+            if self.host_entry.get() == "Ej: 192.168.1.100":
+                self.host_entry.delete(0, tk.END)
+                self.host_entry.config(foreground='black')
+
+        def on_host_focus_out(event):
+            if not self.host_entry.get() and self.mode.get() == "client":
+                self.host_entry.insert(0, "Ej: 192.168.1.100")
+                self.host_entry.config(foreground='gray')
+
+        self.host_entry.bind('<FocusIn>', on_host_focus_in)
+        self.host_entry.bind('<FocusOut>', on_host_focus_out)
+
         # Puerto
         ttk.Label(network_frame, text="Puerto:").grid(row=1, column=0, sticky=tk.W, pady=5)
-        ttk.Entry(network_frame, textvariable=self.port_var, width=30).grid(
-            row=1, column=1, sticky=(tk.W, tk.E), padx=5, pady=5)
+        self.port_entry = ttk.Entry(network_frame, textvariable=self.port_var, width=30)
+        self.port_entry.grid(row=1, column=1, sticky=(tk.W, tk.E), padx=5, pady=5)
+
+        # Placeholder para puerto
+        if not self.port_var.get():
+            self.port_entry.insert(0, "Ej: 5555")
+            self.port_entry.config(foreground='gray')
+
+        def on_port_focus_in(event):
+            if self.port_entry.get() == "Ej: 5555":
+                self.port_entry.delete(0, tk.END)
+                self.port_entry.config(foreground='black')
+
+        def on_port_focus_out(event):
+            if not self.port_entry.get():
+                self.port_entry.insert(0, "Ej: 5555")
+                self.port_entry.config(foreground='gray')
+
+        self.port_entry.bind('<FocusIn>', on_port_focus_in)
+        self.port_entry.bind('<FocusOut>', on_port_focus_out)
 
         # Botón de IP local
         self.ip_button = ttk.Button(network_frame, text="Obtener IP Local",
@@ -82,9 +252,39 @@ class ClipboardSyncGUI:
                                      font=("Arial", 10, "bold"))
         self.status_label.grid(row=0, column=0, sticky=tk.W)
 
+        # Opciones KVM
+        kvm_frame = ttk.LabelFrame(main_frame, text="Compartir Mouse/Teclado (KVM)", padding="10")
+        kvm_frame.grid(row=4, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=5)
+
+        self.kvm_checkbox = ttk.Checkbutton(
+            kvm_frame,
+            text="Activar compartir mouse/teclado",
+            variable=self.kvm_enabled,
+            command=self.toggle_kvm
+        )
+        self.kvm_checkbox.grid(row=0, column=0, sticky=tk.W, padx=5, pady=2)
+
+        # Estado de control KVM
+        self.control_label = ttk.Label(
+            kvm_frame,
+            textvariable=self.control_status_var,
+            font=("Arial", 9, "italic"),
+            foreground="gray"
+        )
+        self.control_label.grid(row=1, column=0, sticky=tk.W, padx=5, pady=2)
+
+        # Ayuda KVM
+        kvm_help = ttk.Label(
+            kvm_frame,
+            text="Presiona Ctrl+Alt+Shift+S para cambiar el control entre dispositivos",
+            font=("Arial", 8),
+            foreground="blue"
+        )
+        kvm_help.grid(row=2, column=0, sticky=tk.W, padx=5, pady=2)
+
         # Controles
         control_frame = ttk.Frame(main_frame)
-        control_frame.grid(row=4, column=0, columnspan=2, pady=10)
+        control_frame.grid(row=5, column=0, columnspan=2, pady=10)
 
         self.start_button = ttk.Button(control_frame, text="Iniciar",
                                        command=self.start_sync, width=15)
@@ -96,7 +296,7 @@ class ClipboardSyncGUI:
 
         # Log
         log_frame = ttk.LabelFrame(main_frame, text="Registro de Actividad", padding="10")
-        log_frame.grid(row=5, column=0, columnspan=2, sticky=(tk.W, tk.E, tk.N, tk.S), pady=5)
+        log_frame.grid(row=6, column=0, columnspan=2, sticky=(tk.W, tk.E, tk.N, tk.S), pady=5)
 
         self.log_text = scrolledtext.ScrolledText(log_frame, height=15, width=70,
                                                   state=tk.DISABLED, wrap=tk.WORD)
@@ -111,11 +311,9 @@ class ClipboardSyncGUI:
     def update_interface(self):
         """Actualiza la interfaz según el modo seleccionado"""
         if self.mode.get() == "server":
-            self.host_var.set("0.0.0.0")
             self.host_entry.config(state=tk.DISABLED)
             self.ip_button.config(state=tk.NORMAL)
         else:
-            self.host_var.set("")
             self.host_entry.config(state=tk.NORMAL)
             self.ip_button.config(state=tk.DISABLED)
 
@@ -139,19 +337,113 @@ class ClipboardSyncGUI:
         self.log_text.see(tk.END)
         self.log_text.config(state=tk.DISABLED)
 
+    # === FUNCIONES KVM ===
+
+    def toggle_kvm(self):
+        """Activa o desactiva KVM"""
+        if not self.running:
+            messagebox.showwarning(
+                "Advertencia",
+                "Debes iniciar la sincronizacion primero antes de activar KVM."
+            )
+            self.kvm_enabled.set(False)
+            return
+
+        if self.kvm_enabled.get():
+            # Activar KVM
+            self.start_kvm()
+        else:
+            # Desactivar KVM
+            self.stop_kvm()
+
+    def start_kvm(self):
+        """Inicia el sistema KVM"""
+        try:
+            if self.kvm_sync is None:
+                self.kvm_sync = KVMSync(
+                    send_callback=self.send_kvm_event,
+                    log_callback=self.log
+                )
+
+            self.kvm_sync.start()
+            self.control_status_var.set("TIENES EL CONTROL (Ctrl+Alt+Shift+S para cambiar)")
+            self.log("KVM activado - Compartiendo mouse/teclado", "success")
+        except Exception as e:
+            self.log(f"Error iniciando KVM: {e}", "error")
+            self.kvm_enabled.set(False)
+
+    def stop_kvm(self):
+        """Detiene el sistema KVM"""
+        if self.kvm_sync:
+            self.kvm_sync.stop()
+            self.control_status_var.set("Sin control")
+            self.log("KVM desactivado", "info")
+
+    def send_kvm_event(self, event_data):
+        """Envia un evento KVM al dispositivo remoto"""
+        try:
+            # Crear un mensaje con protocolo
+            message = {
+                'protocol': 'kvm',
+                'data': event_data
+            }
+            msg_json = json.dumps(message)
+            msg_bytes = msg_json.encode('utf-8')
+            msg_size = len(msg_bytes).to_bytes(4, byteorder='big')
+
+            # Enviar segun el modo
+            if self.mode.get() == "server":
+                # Servidor: enviar a todos los clientes
+                for conn in self.connections[:]:
+                    try:
+                        conn.sendall(msg_size + msg_bytes)
+                    except:
+                        pass
+            else:
+                # Cliente: enviar al servidor
+                if self.client_socket:
+                    try:
+                        self.client_socket.sendall(msg_size + msg_bytes)
+                    except:
+                        pass
+        except Exception as e:
+            self.log(f"Error enviando evento KVM: {e}", "error")
+
+    def handle_kvm_message(self, data):
+        """Maneja un mensaje KVM recibido"""
+        try:
+            if self.kvm_sync and self.kvm_enabled.get():
+                self.kvm_sync.handle_remote_event(data)
+        except Exception as e:
+            self.log(f"Error manejando mensaje KVM: {e}", "error")
+
+    # === FIN FUNCIONES KVM ===
+
     def start_sync(self):
         """Inicia la sincronización"""
+        # Validar puerto
+        port_text = self.port_var.get()
+        if not port_text or port_text == "Ej: 5555":
+            messagebox.showerror("Error", "Debes ingresar un puerto.")
+            return
+
         try:
-            port = int(self.port_var.get())
+            port = int(port_text)
             if port < 1 or port > 65535:
                 raise ValueError("Puerto inválido")
         except ValueError:
             messagebox.showerror("Error", "Puerto inválido. Debe ser un número entre 1 y 65535.")
             return
 
-        if self.mode.get() == "client" and not self.host_var.get():
-            messagebox.showerror("Error", "Debes ingresar la IP del servidor.")
-            return
+        # Validar IP en modo cliente
+        host_text = self.host_var.get()
+        if self.mode.get() == "client":
+            if not host_text or host_text == "Ej: 192.168.1.100":
+                messagebox.showerror("Error", "Debes ingresar la IP del servidor.")
+                return
+
+        # Guardar configuración
+        self.save_config()
 
         self.running = True
         self.start_button.config(state=tk.DISABLED)
@@ -168,6 +460,11 @@ class ClipboardSyncGUI:
         self.running = False
         self.status_var.set("Deteniendo...")
         self.log("Deteniendo sincronización...", "warning")
+
+        # Detener KVM si está activo
+        if self.kvm_enabled.get():
+            self.stop_kvm()
+            self.kvm_enabled.set(False)
 
         # Cerrar conexiones
         if self.server_socket:
@@ -245,7 +542,22 @@ class ClipboardSyncGUI:
 
                 if data:
                     content = data.decode('utf-8', errors='ignore')
-                    self.update_clipboard(content)
+
+                    # Detectar tipo de mensaje
+                    try:
+                        message = json.loads(content)
+                        if isinstance(message, dict) and 'protocol' in message:
+                            # Mensaje con protocolo
+                            if message['protocol'] == 'kvm':
+                                self.handle_kvm_message(message['data'])
+                            elif message['protocol'] == 'clipboard':
+                                self.update_clipboard(message['data'])
+                        else:
+                            # Mensaje legacy (clipboard)
+                            self.update_clipboard(content)
+                    except json.JSONDecodeError:
+                        # No es JSON, asumir clipboard legacy
+                        self.update_clipboard(content)
 
         except Exception as e:
             if self.running:
@@ -258,8 +570,13 @@ class ClipboardSyncGUI:
             self.status_var.set(f"Servidor activo - {len(self.connections)} cliente(s)")
 
     def broadcast_to_clients(self, content):
-        """Envía contenido a todos los clientes conectados"""
-        msg = content.encode('utf-8')
+        """Envía contenido de clipboard a todos los clientes conectados"""
+        # Usar el nuevo protocolo
+        message = {
+            'protocol': 'clipboard',
+            'data': content
+        }
+        msg = json.dumps(message).encode('utf-8')
         msg_size = len(msg).to_bytes(4, byteorder='big')
 
         for conn in self.connections[:]:
@@ -325,10 +642,15 @@ class ClipboardSyncGUI:
                 self.stop_sync()
 
     def send_to_server(self, content):
-        """Envía contenido al servidor"""
+        """Envía contenido de clipboard al servidor"""
         if self.client_socket:
             try:
-                msg = content.encode('utf-8')
+                # Usar el nuevo protocolo
+                message = {
+                    'protocol': 'clipboard',
+                    'data': content
+                }
+                msg = json.dumps(message).encode('utf-8')
                 msg_size = len(msg).to_bytes(4, byteorder='big')
                 self.client_socket.sendall(msg_size + msg)
             except Exception as e:
@@ -353,7 +675,22 @@ class ClipboardSyncGUI:
 
                 if data:
                     content = data.decode('utf-8', errors='ignore')
-                    self.update_clipboard(content)
+
+                    # Detectar tipo de mensaje
+                    try:
+                        message = json.loads(content)
+                        if isinstance(message, dict) and 'protocol' in message:
+                            # Mensaje con protocolo
+                            if message['protocol'] == 'kvm':
+                                self.handle_kvm_message(message['data'])
+                            elif message['protocol'] == 'clipboard':
+                                self.update_clipboard(message['data'])
+                        else:
+                            # Mensaje legacy (clipboard)
+                            self.update_clipboard(content)
+                    except json.JSONDecodeError:
+                        # No es JSON, asumir clipboard legacy
+                        self.update_clipboard(content)
 
         except Exception as e:
             if self.running:
@@ -405,16 +742,6 @@ class ClipboardSyncGUI:
 def main():
     root = tk.Tk()
     app = ClipboardSyncGUI(root)
-
-    def on_closing():
-        if app.running:
-            if messagebox.askokcancel("Salir", "¿Deseas detener la sincronización y salir?"):
-                app.stop_sync()
-                root.destroy()
-        else:
-            root.destroy()
-
-    root.protocol("WM_DELETE_WINDOW", on_closing)
     root.mainloop()
 
 

@@ -1,0 +1,144 @@
+═══════════════════════════════════════════════════════════════
+         CLIPBOARD SYNC - INSTRUCCIONES RÁPIDAS
+═══════════════════════════════════════════════════════════════
+
+📋 ¿Qué hace?
+───────────────────────────────────────────────────────────────
+Sincroniza automáticamente el portapapeles Y comparte mouse/teclado
+entre Windows y Linux. Cuando copias texto en un dispositivo, aparece
+en el otro. Además, puedes controlar ambos PCs con un solo mouse/teclado.
+
+
+🚀 INICIO RÁPIDO
+═══════════════════════════════════════════════════════════════
+
+PASO 1: Compilar a .exe (RECOMENDADO - solo la primera vez)
+───────────────────────────────────────────────────────────────
+1. Doble clic en "Compilar_a_EXE.bat"
+2. Espera a que termine (puede tardar 2-3 minutos)
+3. Busca el archivo "ClipboardSync.exe" en la carpeta "dist/"
+4. Copia el .exe donde quieras (Escritorio, por ejemplo)
+
+PASO 2: Ejecutar la aplicación
+───────────────────────────────────────────────────────────────
+Windows: Doble clic en "ClipboardSync.exe"
+Linux:   ./start_clipboard_sync.sh o python3 clipboard_sync_gui.py
+
+PASO 3: Configurar
+───────────────────────────────────────────────────────────────
+
+EN EL SERVIDOR (un dispositivo):
+1. Selecciona "Servidor"
+2. Haz clic en "Obtener IP Local" (apunta la IP que aparece)
+3. Ingresa un puerto (ejemplo: 5555)
+4. Clic en "Iniciar"
+
+EN EL CLIENTE (otro dispositivo):
+1. Selecciona "Cliente"
+2. Ingresa la IP del servidor (la que apuntaste)
+3. Ingresa el mismo puerto (ejemplo: 5555)
+4. Clic en "Iniciar"
+
+✅ ¡Listo! Ahora copia algo en un dispositivo y aparecerá en el otro
+
+PASO 4 (OPCIONAL): Compartir Mouse/Teclado
+───────────────────────────────────────────────────────────────
+
+DESPUÉS de que la sincronización esté activa:
+1. Marca la casilla "Activar compartir mouse/teclado" en ambos dispositivos
+2. El primer dispositivo que lo active tendrá el control inicial
+3. Para CAMBIAR EL CONTROL: Presiona Ctrl+Alt+Shift+S
+4. El control cambiará al otro dispositivo
+5. Ahora puedes controlar ambos PCs con un solo mouse/teclado
+
+💡 Útil para: Trabajar con dos PCs sin cambiar el mouse/teclado físicamente
+
+
+🔧 FUNCIONALIDADES
+═══════════════════════════════════════════════════════════════
+
+🔹 Bandeja del Sistema (System Tray)
+   • La aplicación se oculta en la bandeja al minimizar/cerrar
+   • Haz clic derecho en el ícono para ver opciones
+   • La sincronización continúa incluso cuando está oculta
+
+🔹 Configuración Automática
+   • No hay datos hardcodeados
+   • Se guarda tu última configuración
+   • La próxima vez se carga automáticamente
+
+🔹 Compartir Mouse/Teclado (KVM)
+   • Controla ambos PCs con un solo mouse/teclado
+   • Cambia el control con Ctrl+Alt+Shift+S
+   • No necesitas switch KVM físico
+   • Ahorra tiempo y espacio en tu escritorio
+
+🔹 Archivo .exe
+   • No necesitas Python instalado
+   • Portable: copia y ejecuta en cualquier PC
+   • Más profesional y fácil de usar
+
+
+📝 ARCHIVOS IMPORTANTES
+═══════════════════════════════════════════════════════════════
+
+ClipboardSync.exe           → Ejecutable principal (Windows)
+clipboard_sync_gui.py       → Código fuente de la GUI
+clipboard_sync.py           → Versión de línea de comandos
+Compilar_a_EXE.bat         → Script para compilar a .exe
+start_clipboard_sync.sh    → Script para Linux
+README.md                  → Documentación completa
+
+
+❓ PREGUNTAS FRECUENTES
+═══════════════════════════════════════════════════════════════
+
+P: ¿Puedo usar el .exe en otra computadora?
+R: Sí, solo copia el .exe y ejecútalo. No necesita Python.
+
+P: ¿La aplicación consume muchos recursos?
+R: No, usa muy pocos recursos cuando está oculta en la bandeja.
+
+P: ¿Puedo cerrar completamente la aplicación?
+R: Sí, haz clic derecho en el ícono de la bandeja → "Salir"
+
+P: ¿Funciona con imágenes?
+R: No, solo con texto. Es una limitación del sistema.
+
+P: ¿Cómo funciona el compartir mouse/teclado?
+R: Activa la opción KVM en ambos dispositivos, y presiona Ctrl+Alt+Shift+S
+   para cambiar el control. El que tiene el control puede mover el mouse
+   y escribir en el otro PC.
+
+P: ¿El mouse/teclado funciona igual que Barrier o Synergy?
+R: Sí, es similar. Presionas la hotkey para cambiar entre dispositivos.
+
+P: ¿Los datos están encriptados?
+R: No, solo usa en redes confiables o con VPN.
+
+
+🔒 SEGURIDAD
+═══════════════════════════════════════════════════════════════
+
+⚠️ IMPORTANTE:
+• Los datos NO están encriptados
+• Solo usa en redes confiables
+• Para internet, usa una VPN (Tailscale, ZeroTier, etc.)
+• No compartas información sensible sin medidas adicionales
+
+
+💡 CONSEJOS
+═══════════════════════════════════════════════════════════════
+
+✓ Usa puertos altos (5000-9999) para evitar conflictos
+✓ Si no funciona, verifica el firewall
+✓ En Linux, instala xclip: sudo apt install xclip
+✓ Para red local, asegúrate de estar en la misma red WiFi
+
+
+📧 SOPORTE
+═══════════════════════════════════════════════════════════════
+
+Para más ayuda, consulta el archivo README.md
+
+═══════════════════════════════════════════════════════════════

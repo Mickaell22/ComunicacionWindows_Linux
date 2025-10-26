@@ -108,3 +108,12 @@ venv.bak/
 # OS
 .DS_Store
 Thumbs.db
+
+# Configuración local
+clipboard_sync_config.json
+
+# PyInstaller
+build/
+dist/
+*.spec
+clipboard_sync.ico

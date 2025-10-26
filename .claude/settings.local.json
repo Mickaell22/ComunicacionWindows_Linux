@@ -4,7 +4,10 @@
       "Bash(dir:*)",
       "Bash(git -C \"C:\\Users\\ASUS\\PycharmProjects\\ComunicacionWindows_Linux\" status)",
       "Bash(git init:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(pip install:*)",
+      "Bash(python build_exe.py:*)",
+      "Bash(python -m py_compile:*)"
     ],
     "deny": [],
     "ask": []
