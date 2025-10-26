@@ -12,6 +12,8 @@ Este programa permite compartir automáticamente el contenido del portapapeles e
 - Funciona entre Windows y Linux (Kali)
 - Arquitectura cliente-servidor simple
 - Detección automática de cambios en el portapapeles
+- **Interfaz gráfica (GUI) fácil de usar**
+- **Versión de línea de comandos también disponible**
 - Sin necesidad de configuración compleja
 
 ## Requisitos
@@ -45,7 +47,47 @@ sudo apt install xclip
 
 ## Uso
 
-### Paso 1: Configurar el servidor
+### OPCIÓN 1: Interfaz Gráfica (RECOMENDADO)
+
+La forma más fácil de usar Clipboard Sync es con la interfaz gráfica.
+
+**En Windows:**
+- Doble clic en `Iniciar_Clipboard_Sync.bat`
+- O ejecuta: `python clipboard_sync_gui.py`
+
+**En Linux/Kali:**
+```bash
+# Dar permisos al script (solo la primera vez)
+chmod +x start_clipboard_sync.sh
+
+# Ejecutar
+./start_clipboard_sync.sh
+# O directamente:
+python3 clipboard_sync_gui.py
+```
+
+#### Configurar como Servidor:
+1. Ejecuta `python clipboard_sync_gui.py`
+2. Selecciona "Servidor" en el modo de operación
+3. Haz clic en "Obtener IP Local" para ver tu IP
+4. Haz clic en "Iniciar"
+5. Comparte la IP con el cliente
+
+#### Configurar como Cliente:
+1. Ejecuta `python clipboard_sync_gui.py`
+2. Selecciona "Cliente" en el modo de operación
+3. Ingresa la IP del servidor en el campo "IP"
+4. Haz clic en "Iniciar"
+
+¡Listo! Ahora cualquier texto que copies en un dispositivo aparecerá automáticamente en el otro.
+
+---
+
+### OPCIÓN 2: Línea de Comandos
+
+Si prefieres usar comandos de terminal:
+
+#### Paso 1: Configurar el servidor
 
 Decide qué dispositivo será el servidor (puede ser cualquiera de los dos).
 
@@ -63,7 +105,7 @@ Esto mostrará algo como:
 
 Anota la IP local que aparece, la necesitarás para el cliente.
 
-### Paso 2: Conectar el cliente
+#### Paso 2: Conectar el cliente
 
 **En el otro dispositivo** (ejemplo: Kali Linux), conéctate usando la IP del servidor:
 
@@ -73,17 +115,19 @@ python clipboard_sync.py client --host 192.168.1.100
 
 Reemplaza `192.168.1.100` con la IP que anotaste del servidor.
 
-### Ejemplos de uso
+#### Ejemplos de uso
 
-#### Servidor en puerto personalizado:
+**Servidor en puerto personalizado:**
 ```bash
 python clipboard_sync.py server --port 6000
 ```
 
-#### Cliente conectando a puerto personalizado:
+**Cliente conectando a puerto personalizado:**
 ```bash
 python clipboard_sync.py client --host 192.168.1.100 --port 6000
 ```
+
+---
 
 ## Cómo funciona
 
